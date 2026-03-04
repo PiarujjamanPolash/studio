@@ -1,0 +1,195 @@
+
+'use client';
+
+import { useEffect, useState } from 'react';
+import { Navigation, MobileNav } from '@/components/Navigation';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { getDB, saveDB } from '@/lib/mock-db';
+import { Transaction, Agency, TransactionType } from '@/lib/types';
+import { Plus, Trash2, Filter, Receipt } from 'lucide-react';
+
+export default function TransactionsPage() {
+  const [data, setData] = useState<{ agency: Agency; transactions: Transaction[] } | null>(null);
+  const [isOpen, setIsOpen] = useState(false);
+  const [newTx, setNewTx] = useState<Partial<Transaction>>({
+    type: 'income',
+    date: new Date().toISOString().split('T')[0],
+  });
+
+  useEffect(() => {
+    setData(getDB());
+  }, []);
+
+  const handleAddTransaction = () => {
+    if (!data || !newTx.amount || !newTx.handledBy || !newTx.description) return;
+
+    const tx: Transaction = {
+      id: Math.random().toString(36).substr(2, 9),
+      type: newTx.type as TransactionType,
+      amount: Number(newTx.amount),
+      date: newTx.date || new Date().toISOString().split('T')[0],
+      description: newTx.description,
+      project: newTx.project,
+      category: newTx.category,
+      handledBy: newTx.handledBy,
+    };
+
+    const updated = { ...data, transactions: [tx, ...data.transactions] };
+    setData(updated);
+    saveDB(updated);
+    setIsOpen(false);
+    setNewTx({ type: 'income', date: new Date().toISOString().split('T')[0] });
+  };
+
+  const deleteTransaction = (id: string) => {
+    if (!data) return;
+    const updated = { ...data, transactions: data.transactions.filter((t) => t.id !== id) };
+    setData(updated);
+    saveDB(updated);
+  };
+
+  if (!data) return null;
+
+  return (
+    <div className="min-h-screen bg-background">
+      <Navigation />
+      <div className="flex flex-col md:pl-64">
+        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-card px-4 md:px-8">
+          <h1 className="text-xl font-bold">Transactions</h1>
+          <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <DialogTrigger asChild>
+              <Button className="gap-2">
+                <Plus size={18} /> Add New
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Add Transaction</DialogTitle>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Type</Label>
+                    <Select onValueChange={(v) => setNewTx({ ...newTx, type: v as TransactionType })} defaultValue="income">
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="income">Income</SelectItem>
+                        <SelectItem value="expense">Expense</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Amount</Label>
+                    <Input 
+                      type="number" 
+                      placeholder="0.00" 
+                      onChange={(e) => setNewTx({ ...newTx, amount: Number(e.target.value) })}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Description</Label>
+                  <Input 
+                    placeholder="e.g. Website payment" 
+                    onChange={(e) => setNewTx({ ...newTx, description: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Handled By</Label>
+                  <Select onValueChange={(v) => setNewTx({ ...newTx, handledBy: v })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select partner" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {data.agency.partners.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Project (Optional)</Label>
+                    <Input placeholder="Project name" onChange={(e) => setNewTx({ ...newTx, project: e.target.value })} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Date</Label>
+                    <Input 
+                      type="date" 
+                      value={newTx.date}
+                      onChange={(e) => setNewTx({ ...newTx, date: e.target.value })}
+                    />
+                  </div>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button onClick={handleAddTransaction} className="w-full">Create Transaction</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </header>
+
+        <main className="flex-1 p-4 md:p-8 pb-24 md:pb-8">
+          <div className="rounded-lg border bg-card">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead>Partner</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {data.transactions.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="h-32 text-center text-muted-foreground">
+                      No transactions recorded yet.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  data.transactions.map((tx) => (
+                    <TableRow key={tx.id}>
+                      <TableCell className="text-muted-foreground">{tx.date}</TableCell>
+                      <TableCell>
+                        <div className="flex flex-col">
+                          <span className="font-medium">{tx.description}</span>
+                          {tx.project && <span className="text-xs text-muted-foreground">{tx.project}</span>}
+                        </div>
+                      </TableCell>
+                      <TableCell>{data.agency.partners.find(p => p.id === tx.handledBy)?.name || '?'}</TableCell>
+                      <TableCell>
+                        <Badge variant={tx.type === 'income' ? 'secondary' : 'outline'} className={tx.type === 'income' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'}>
+                          {tx.type}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right font-bold">
+                        ${tx.amount.toLocaleString()}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="ghost" size="icon" onClick={() => deleteTransaction(tx.id)}>
+                          <Trash2 size={16} className="text-muted-foreground hover:text-destructive" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </main>
+      </div>
+      <MobileNav />
+    </div>
+  );
+}

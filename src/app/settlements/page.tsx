@@ -1,0 +1,180 @@
+
+'use client';
+
+import { useEffect, useState } from 'react';
+import { Navigation, MobileNav } from '@/components/Navigation';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { getDB, saveDB } from '@/lib/mock-db';
+import { Settlement, Agency } from '@/lib/types';
+import { Plus, Trash2, HandCoins, ArrowRight } from 'lucide-react';
+
+export default function SettlementsPage() {
+  const [data, setData] = useState<{ agency: Agency; settlements: Settlement[] } | null>(null);
+  const [isOpen, setIsOpen] = useState(false);
+  const [newSet, setNewSet] = useState<Partial<Settlement>>({
+    date: new Date().toISOString().split('T')[0],
+  });
+
+  useEffect(() => {
+    setData(getDB());
+  }, []);
+
+  const handleAddSettlement = () => {
+    if (!data || !newSet.amount || !newSet.fromPartnerId || !newSet.toPartnerId) return;
+
+    const settlement: Settlement = {
+      id: Math.random().toString(36).substr(2, 9),
+      fromPartnerId: newSet.fromPartnerId,
+      toPartnerId: newSet.toPartnerId,
+      amount: Number(newSet.amount),
+      date: newSet.date || new Date().toISOString().split('T')[0],
+      note: newSet.note,
+    };
+
+    const updated = { ...data, settlements: [settlement, ...data.settlements] };
+    setData(updated);
+    saveDB(updated);
+    setIsOpen(false);
+    setNewSet({ date: new Date().toISOString().split('T')[0] });
+  };
+
+  const deleteSettlement = (id: string) => {
+    if (!data) return;
+    const updated = { ...data, settlements: data.settlements.filter((s) => s.id !== id) };
+    setData(updated);
+    saveDB(updated);
+  };
+
+  if (!data) return null;
+
+  return (
+    <div className="min-h-screen bg-background">
+      <Navigation />
+      <div className="flex flex-col md:pl-64">
+        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-card px-4 md:px-8">
+          <h1 className="text-xl font-bold">Settlements</h1>
+          <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <DialogTrigger asChild>
+              <Button className="gap-2">
+                <Plus size={18} /> Record Settlement
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Record Payment</DialogTitle>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>From (Sender)</Label>
+                    <Select onValueChange={(v) => setNewSet({ ...newSet, fromPartnerId: v })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sender" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {data.agency.partners.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>To (Receiver)</Label>
+                    <Select onValueChange={(v) => setNewSet({ ...newSet, toPartnerId: v })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Receiver" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {data.agency.partners.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Amount</Label>
+                  <Input 
+                    type="number" 
+                    placeholder="0.00" 
+                    onChange={(e) => setNewSet({ ...newSet, amount: Number(e.target.value) })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Date</Label>
+                  <Input 
+                    type="date" 
+                    value={newSet.date}
+                    onChange={(e) => setNewSet({ ...newSet, date: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Note (Optional)</Label>
+                  <Input placeholder="Settlement for May" onChange={(e) => setNewSet({ ...newSet, note: e.target.value })} />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button onClick={handleAddSettlement} className="w-full">Record Payment</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </header>
+
+        <main className="flex-1 p-4 md:p-8 pb-24 md:pb-8">
+          <div className="rounded-lg border bg-card">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>From</TableHead>
+                  <TableHead></TableHead>
+                  <TableHead>To</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {data.settlements.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="h-32 text-center text-muted-foreground">
+                      No settlements recorded yet. Use the suggestion tool on the dashboard!
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  data.settlements.map((s) => (
+                    <TableRow key={s.id}>
+                      <TableCell className="text-muted-foreground">{s.date}</TableCell>
+                      <TableCell className="font-medium">
+                        {data.agency.partners.find(p => p.id === s.fromPartnerId)?.name}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <ArrowRight size={14} className="mx-auto text-muted-foreground" />
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {data.agency.partners.find(p => p.id === s.toPartnerId)?.name}
+                      </TableCell>
+                      <TableCell className="text-right font-bold text-primary">
+                        ${s.amount.toLocaleString()}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="ghost" size="icon" onClick={() => deleteSettlement(s.id)}>
+                          <Trash2 size={16} className="text-muted-foreground hover:text-destructive" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </main>
+      </div>
+      <MobileNav />
+    </div>
+  );
+}

@@ -1,3 +1,22 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "hero-dashboard",
+      "description": "Financial dashboard overview",
+      "imageUrl": "https://picsum.photos/seed/agency1/1200/800",
+      "imageHint": "financial dashboard"
+    },
+    {
+      "id": "partner-avatar-1",
+      "description": "Agency partner portrait",
+      "imageUrl": "https://picsum.photos/seed/partner1/100/100",
+      "imageHint": "business person"
+    },
+    {
+      "id": "partner-avatar-2",
+      "description": "Agency partner portrait",
+      "imageUrl": "https://picsum.photos/seed/partner2/100/100",
+      "imageHint": "business person"
+    }
+  ]
 }
