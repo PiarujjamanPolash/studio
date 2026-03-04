@@ -13,6 +13,7 @@ import { ArrowUpRight, ArrowDownRight, Wallet, Plus, TrendingUp, Globe, Coins } 
 import { cn, formatCurrency } from '@/lib/utils';
 import { getAgency, getTransactions, getSettlements } from '@/lib/mock-db';
 import { getUSDToBDTRate, convertToBDT } from '@/lib/fx';
+import { PWAInstallPrompt } from '@/components/PWAInstallPrompt';
 
 export default function DashboardPage() {
   const [data, setData] = useState<{
@@ -150,33 +151,60 @@ export default function DashboardPage() {
                 <CardTitle>Partner Balances</CardTitle>
                 <CardDescription>Breakdown of who owes what to the agency pool.</CardDescription>
               </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Partner</TableHead>
-                      <TableHead>Should Receive</TableHead>
-                      <TableHead>Handled Net</TableHead>
-                      <TableHead className="text-right">Balance</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {balances.map((b) => (
-                      <TableRow key={b.partnerId}>
-                        <TableCell className="font-medium">{b.name}</TableCell>
-                        <TableCell>{displayVal(b.shouldReceive)}</TableCell>
-                        <TableCell>{displayVal(b.handledNet)}</TableCell>
-                        <TableCell className="text-right">
-                          <Badge variant={b.balance > 0 ? 'destructive' : 'secondary'} className="whitespace-nowrap">
-                            {b.balance > 0
-                              ? `Pay ${displayVal(b.balance)}`
-                              : `Owed ${displayVal(Math.abs(b.balance))}`}
-                          </Badge>
-                        </TableCell>
+              <CardContent className="px-2 sm:px-6">
+                {/* Desktop Table View */}
+                <div className="hidden md:block">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Partner</TableHead>
+                        <TableHead>Should Receive</TableHead>
+                        <TableHead>Handled Net</TableHead>
+                        <TableHead className="text-right">Balance</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {balances.map((b) => (
+                        <TableRow key={b.partnerId}>
+                          <TableCell className="font-medium">{b.name}</TableCell>
+                          <TableCell>{displayVal(b.shouldReceive)}</TableCell>
+                          <TableCell>{displayVal(b.handledNet)}</TableCell>
+                          <TableCell className="text-right">
+                            <Badge variant={b.balance > 0 ? 'destructive' : 'secondary'} className="whitespace-nowrap">
+                              {b.balance > 0
+                                ? `Pay ${displayVal(b.balance)}`
+                                : `Owed ${displayVal(Math.abs(b.balance))}`}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* Mobile Card View */}
+                <div className="space-y-3 md:hidden">
+                  {balances.map((b) => (
+                    <div key={b.partnerId} className="flex flex-col gap-2 rounded-lg border p-3 text-sm">
+                      <div className="flex items-center justify-between border-b pb-2">
+                        <span className="font-bold text-base">{b.name}</span>
+                        <Badge variant={b.balance > 0 ? 'destructive' : 'secondary'}>
+                          {b.balance > 0 ? 'To Pay' : 'To Receive'}
+                        </Badge>
+                      </div>
+                      <div className="grid grid-cols-2 gap-y-1">
+                        <span className="text-muted-foreground">Should Rec:</span>
+                        <span className="text-right">{displayVal(b.shouldReceive)}</span>
+                        <span className="text-muted-foreground">Handled Net:</span>
+                        <span className="text-right">{displayVal(b.handledNet)}</span>
+                        <span className="text-muted-foreground font-bold">Current Bal:</span>
+                        <span className={cn("text-right font-bold", b.balance > 0 ? "text-destructive" : "text-emerald-600")}>
+                          {displayVal(Math.abs(b.balance))}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </CardContent>
             </Card>
 
@@ -195,18 +223,18 @@ export default function DashboardPage() {
                 ) : (
                   <div className="space-y-4">
                     {suggestions.map((s, idx) => (
-                      <div key={idx} className="flex items-center justify-between rounded-lg border p-4">
-                        <div className="flex flex-col">
-                          <span className="text-xs font-medium text-muted-foreground uppercase">From</span>
-                          <span className="font-bold">{getPartnerName(s.from)}</span>
+                      <div key={idx} className="flex items-center justify-between rounded-lg border p-3 sm:p-4 gap-2">
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-[10px] font-medium text-muted-foreground uppercase">From</span>
+                          <span className="font-bold truncate text-sm sm:text-base">{getPartnerName(s.from)}</span>
                         </div>
-                        <div className="flex flex-col items-center px-2">
+                        <div className="flex flex-col items-center flex-shrink-0">
                           <span className="text-sm font-bold text-primary">{displayVal(s.amount)}</span>
                           <div className="h-px w-6 bg-border" />
                         </div>
-                        <div className="flex flex-col text-right">
-                          <span className="text-xs font-medium text-muted-foreground uppercase">To</span>
-                          <span className="font-bold">{getPartnerName(s.to)}</span>
+                        <div className="flex flex-col text-right min-w-0">
+                          <span className="text-[10px] font-medium text-muted-foreground uppercase">To</span>
+                          <span className="font-bold truncate text-sm sm:text-base">{getPartnerName(s.to)}</span>
                         </div>
                       </div>
                     ))}
@@ -221,6 +249,7 @@ export default function DashboardPage() {
         </main>
       </div>
       <MobileNav />
+      <PWAInstallPrompt />
     </div>
   );
 }
